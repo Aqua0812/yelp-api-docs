@@ -1,0 +1,1023 @@
+openapi: 3.0.3
+info:
+  title: Yelp-like Application API
+  version: "1.0.0"
+  description: >
+    REST API for a Yelp-style web application. It powers:
+    - Home Page (top businesses, top categories, most reviewed)
+    - Search Page (advanced business ranking with pagination, dynamic attribute filters)
+    - Explore City Page (top cities, top businesses with recent tips & reviews)
+    - Business Detail Page (latest reviews for a business)
+    - User Profile Page (favorites list, favorite category profile).
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /api/home/top-businesses:
+    get:
+      summary: Get Top 100 Businesses
+      description: >
+        Returns the Top 100 businesses across all cities, ordered by star
+        rating and review count, for display on the Home Page “Top 100 Businesses” table.
+      operationId: getTopBusinesses
+      tags:
+        - Home
+      parameters: []
+      responses:
+        "200":
+          description: Successful response with up to 100 businesses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopBusinessesResponse"
+              example:
+                data:
+                  - business_id: "xxxx"
+                    name: "Some Business"
+                    city: "Toronto"
+                    stars: 4.5
+                    review_count: 1234
+                  - business_id: "yyyy"
+                    name: "Another Business"
+                    city: "Las Vegas"
+                    stars: 4.5
+                    review_count: 900
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+
+  /api/home/top-categories:
+    get:
+      summary: Get Top 10 Business Categories
+      description: >
+        Returns the Top 10 most frequent business categories across the entire dataset,
+        for display on the Home Page “Top Categories” section.
+      operationId: getTopCategories
+      tags:
+        - Home
+      parameters: []
+      responses:
+        "200":
+          description: Successful response with up to 10 categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopCategoriesResponse"
+              example:
+                data:
+                  - category_name: "Restaurants"
+                    category_count: 123456
+                  - category_name: "Shopping"
+                    category_count: 98765
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/home/most-reviewed:
+    get:
+      summary: Get Top 100 Most Reviewed Businesses
+      description: >
+        Returns the 100 businesses with the highest review_count across all cities,
+        for the Home Page “Top 100 Most Reviewed Businesses” section.
+      operationId: getMostReviewedBusinesses
+      tags:
+        - Home
+      parameters: []
+      responses:
+        "200":
+          description: Successful response with up to 100 most reviewed businesses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopBusinessesResponse"
+              example:
+                data:
+                  - business_id: "yyyy"
+                    name: "Another Business"
+                    city: "Las Vegas"
+                    stars: 4.0
+                    review_count: 2500
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/search/businesses:
+    get:
+      summary: Search Businesses with Advanced Ranking
+      description: >
+        Returns a paginated list of businesses filtered by city, category, and minimum rating,
+        optionally filtered by JSONB attributes. Results are ranked by a composite score
+        combining stars and review_count.
+      operationId: searchBusinessesAdvanced
+      tags:
+        - Search
+      parameters:
+        - name: city
+          in: query
+          required: true
+          description: City to filter businesses by.
+          schema:
+            type: string
+            example: Toronto
+
+        - name: category
+          in: query
+          required: true
+          description: Category to filter businesses by (e.g., "Restaurants").
+          schema:
+            type: string
+            example: Restaurants
+
+        - name: minStars
+          in: query
+          required: false
+          description: Minimum star rating a business must have to be included.
+          schema:
+            type: number
+            format: float
+            default: 3.5
+            example: 4.0
+
+        - name: attributeFilters
+          in: query
+          required: false
+          description: >
+            JSON string representing desired attribute filters
+            (e.g. {"WiFi":"free","RestaurantsPriceRange2":"2"}).
+          schema:
+            type: string
+            example: '{"WiFi":"free","RestaurantsPriceRange2":"2"}'
+
+        - name: page
+          in: query
+          required: false
+          description: 1-based page index for pagination.
+          schema:
+            type: integer
+            format: int32
+            default: 1
+            minimum: 1
+            example: 1
+
+        - name: pageSize
+          in: query
+          required: false
+          description: Number of records per page.
+          schema:
+            type: integer
+            format: int32
+            default: 20
+            maximum: 50
+            example: 20
+
+      responses:
+        "200":
+          description: Successful response with paginated business search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchBusinessesResponse"
+              example:
+                data:
+                  - business_id: "abc123"
+                    name: "Great Sushi Place"
+                    city: "Toronto"
+                    category_name: "Restaurants"
+                    stars: 4.5
+                    review_count: 980
+                    composite_score: 4.82
+                    rank_position: 1
+                page: 1
+                pageSize: 20
+
+        "400":
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required parameters: city and category are required."
+
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/search/top-attributes:
+    get:
+      summary: Get Top Attributes for Selected Categories
+      description: >
+        Given one or more user-selected categories, returns the most representative attributes
+        (e.g., "WiFi", "OutdoorSeating") used by businesses in those categories. This powers the
+        dynamic attribute filter UI on the Search Page.
+      operationId: getTopAttributesForCategories
+      tags:
+        - Search
+      parameters:
+        - name: categories
+          in: query
+          required: true
+          description: >
+            Comma-separated list of category names selected by the user
+            (e.g. "Restaurants,Bars,Nightlife").
+          schema:
+            type: string
+            example: "Restaurants,Bars,Nightlife"
+
+        - name: minBusinessCount
+          in: query
+          required: false
+          description: >
+            Minimum number of businesses that must have an attribute for it to be included.
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            minimum: 1
+            example: 10
+
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of attributes to return (top-N ranked).
+          schema:
+            type: integer
+            format: int32
+            default: 50
+            maximum: 100
+            example: 50
+
+      responses:
+        "200":
+          description: Successful response with attribute statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopAttributesResponse"
+              example:
+                data:
+                  - attribute_name: "WiFi"
+                    business_count_with_attr: 820
+                    coverage_ratio: 0.73
+                    rank_position: 1
+                  - attribute_name: "OutdoorSeating"
+                    business_count_with_attr: 540
+                    coverage_ratio: 0.48
+                    rank_position: 2
+                categories:
+                  - "Restaurants"
+                  - "Bars"
+                limit: 50
+                minBusinessCount: 10
+
+        "400":
+          description: "Missing required parameter: categories"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing required parameter: categories"
+
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/explore/top-cities:
+    get:
+      summary: Get Top 6 Cities by Business Count
+      description: >
+        Returns the top 6 cities (with state) ranked by the number of businesses.
+        Used on the Explore City page to show major locations.
+      operationId: getTopCitiesByBusinessCount
+      tags:
+        - Explore
+      parameters: []
+      responses:
+        "200":
+          description: Top 6 cities by number of businesses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopCitiesResponse"
+              example:
+                data:
+                  - city: "Las Vegas"
+                    state: "NV"
+                    business_count: 13450
+                  - city: "Toronto"
+                    state: "ON"
+                    business_count: 9820
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/businesses/{businessId}/reviews:
+    get:
+      summary: Get Latest 50 Reviews for a Business
+      description: >
+        Returns the latest 50 reviews for a specified business, ordered by review date
+        descending. Used on the Business Detail Page to show recent user feedback.
+      operationId: getLatestReviewsForBusiness
+      tags:
+        - Business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          description: Yelp business_id of the business whose reviews are requested.
+          schema:
+            type: string
+            example: "abc123businessid"
+      responses:
+        "200":
+          description: Latest reviews for the specified business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessReviewsResponse"
+              example:
+                data:
+                  - review_id: "rev123"
+                    user_id: "user789"
+                    stars: 5
+                    useful: 3
+                    funny: 0
+                    cool: 1
+                    text: "Amazing service and great food!"
+                    date: "2021-05-10"
+        "400":
+          description: "Missing or invalid businessId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid businessId path parameter."
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/users/{authorizedUserId}/favorites:
+    get:
+      summary: Get All Favorited Businesses for a User
+      description: >
+        Returns all businesses that a given logged-in user has favorited, ordered by the time
+        they were favorited (most recent first). Used on the User Profile Page to display the
+        user's saved businesses.
+      operationId: getUserFavorites
+      tags:
+        - User
+      parameters:
+        - name: authorizedUserId
+          in: path
+          required: true
+          description: Internal app-level ID of the logged-in user (from AuthorizedUser table).
+          schema:
+            type: string
+            example: "123"
+      responses:
+        "200":
+          description: List of favorited businesses for the specified user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserFavoritesResponse"
+              example:
+                data:
+                  - favorited_at: "2024-10-01T12:34:56Z"
+                    business_id: "abc123"
+                    name: "Favorite Cafe"
+                    city: "Toronto"
+                    state: "ON"
+                    stars: 4.5
+                    review_count: 340
+                    categories: "Cafes, Coffee & Tea"
+        "400":
+          description: "Missing authorizedUserId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing authorizedUserId path parameter."
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/explore/top-businesses-with-content:
+    get:
+      summary: Get Top Businesses in Top Cities with Recent Tips & Reviews
+      description: >
+        For each of the top 6 cities (by number of businesses), returns the top 5 businesses
+        ranked by rating (with review_count as a tie-breaker), along with up to 3 most recent
+        tips and 3 most recent reviews per business.
+      operationId: getTopCityBusinessesWithContent
+      tags:
+        - Explore
+      parameters: []
+      responses:
+        "200":
+          description: Top businesses in top cities with recent tips and reviews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopCityBusinessesWithContentResponse"
+              example:
+                data:
+                  - city: "Las Vegas"
+                    state: "NV"
+                    business_id: "biz123"
+                    name: "Famous Steakhouse"
+                    stars: 4.5
+                    review_count: 1500
+                    rank_in_city: 1
+                    content_type: "review"
+                    user_id: "user789"
+                    content_text: "Best steak I've had in years..."
+                    content_date: "2022-08-01"
+                    content_rank: 1
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/users/{authorizedUserId}/favorite-categories:
+    get:
+      summary: Get Favorite Category Profile for a User
+      description: >
+        Builds a “favorite category profile” for a given user based on their favorited businesses.
+        For the specified authorized_user_id, it tokenizes each favorited business’s categories
+        string and computes, per category, the number of favorited businesses and the average
+        Yelp star rating.
+      operationId: getFavoriteCategoryProfile
+      tags:
+        - User
+      parameters:
+        - name: authorizedUserId
+          in: path
+          required: true
+          description: App-level user ID from the AuthorizedUser table.
+          schema:
+            type: string
+            example: "123"
+      responses:
+        "200":
+          description: Favorite category profile for the specified user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteCategoriesResponse"
+              examples:
+                nonEmpty:
+                  summary: User has some favorites
+                  value:
+                    data:
+                      - category: "Restaurants"
+                        num_favorited_businesses: 8
+                        avg_category_stars: 4.63
+                      - category: "Cafes"
+                        num_favorited_businesses: 5
+                        avg_category_stars: 4.40
+                empty:
+                  summary: User has no favorites
+                  value:
+                    data: []
+        "400":
+          description: "Missing or invalid authorizedUserId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid authorizedUserId path parameter."
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+
+components:
+  schemas:
+    Business:
+      type: object
+      properties:
+        business_id:
+          type: string
+          description: Yelp business_id (primary key of Business table)
+          example: "abcd1234"
+        name:
+          type: string
+          description: Name of the business
+          example: "Some Business"
+        city:
+          type: string
+          description: City where the business is located
+          example: "Toronto"
+        stars:
+          type: number
+          format: float
+          description: Average star rating of the business
+          example: 4.5
+        review_count:
+          type: integer
+          format: int32
+          description: Number of reviews the business has
+          example: 1234
+      required:
+        - business_id
+        - name
+        - city
+        - stars
+        - review_count
+
+    Category:
+      type: object
+      properties:
+        category_name:
+          type: string
+          description: Name of the category (e.g., "Restaurants", "Shopping")
+          example: "Restaurants"
+        category_count:
+          type: integer
+          format: int32
+          description: Number of businesses that have this category
+          example: 123456
+      required:
+        - category_name
+        - category_count
+
+    TopBusinessesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Business"
+      required:
+        - data
+
+    TopCategoriesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+      required:
+        - data
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Internal server error
+      required:
+        - error
+    
+    BusinessSearchResult:
+      type: object
+      properties:
+        business_id:
+          type: string
+          description: Yelp business_id of the business.
+          example: "abc123"
+        name:
+          type: string
+          description: Business name.
+          example: "Great Sushi Place"
+        city:
+          type: string
+          description: City where the business is located.
+          example: "Toronto"
+        category_name:
+          type: string
+          description: Category under which this business matched.
+          example: "Restaurants"
+        stars:
+          type: number
+          format: float
+          description: Average star rating.
+          example: 4.5
+        review_count:
+          type: integer
+          format: int32
+          description: Number of reviews.
+          example: 980
+        composite_score:
+          type: number
+          format: float
+          description: Weighted ranking score (higher = more prominent).
+          example: 4.82
+        rank_position:
+          type: integer
+          format: int32
+          description: Global rank among filtered results (1-based).
+          example: 1
+      required:
+        - business_id
+        - name
+        - city
+        - category_name
+        - stars
+        - review_count
+        - composite_score
+        - rank_position
+
+    SearchBusinessesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessSearchResult"
+        page:
+          type: integer
+          format: int32
+          description: Current page index returned.
+          example: 1
+        pageSize:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          example: 20
+      required:
+        - data
+        - page
+        - pageSize
+
+    AttributeStat:
+      type: object
+      properties:
+        attribute_name:
+          type: string
+          description: Attribute key (e.g., "WiFi", "OutdoorSeating").
+          example: "WiFi"
+        business_count_with_attr:
+          type: integer
+          format: int32
+          description: Number of businesses in the filtered set that have this attribute.
+          example: 820
+        coverage_ratio:
+          type: number
+          format: float
+          description: >
+            Fraction of filtered businesses that have this attribute
+            (business_count_with_attr / total_business_count).
+          example: 0.73
+        rank_position:
+          type: integer
+          format: int32
+          description: Rank of the attribute among all candidate attributes (1 = most common).
+          example: 1
+      required:
+        - attribute_name
+        - business_count_with_attr
+        - coverage_ratio
+        - rank_position
+
+    TopAttributesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of attribute statistics.
+          items:
+            $ref: "#/components/schemas/AttributeStat"
+        categories:
+          type: array
+          description: Echo of the parsed category list.
+          items:
+            type: string
+          example:
+            - "Restaurants"
+            - "Bars"
+        limit:
+          type: integer
+          format: int32
+          description: Limit applied to the results.
+          example: 50
+        minBusinessCount:
+          type: integer
+          format: int32
+          description: Threshold used in the filter.
+          example: 10
+      required:
+        - data
+        - categories
+        - limit
+        - minBusinessCount
+        
+    CitySummary:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City name.
+          example: "Las Vegas"
+        state:
+          type: string
+          description: State or province code.
+          example: "NV"
+        business_count:
+          type: integer
+          format: int32
+          description: Number of businesses in this city and state.
+          example: 13450
+      required:
+        - city
+        - state
+        - business_count
+
+    TopCitiesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of city summary objects.
+          items:
+            $ref: "#/components/schemas/CitySummary"
+      required:
+        - data
+
+    Review:
+      type: object
+      properties:
+        review_id:
+          type: string
+          description: Unique ID of the review.
+          example: "rev123"
+        user_id:
+          type: string
+          description: ID of the Yelp user who wrote the review.
+          example: "user789"
+        stars:
+          type: number
+          format: float
+          description: Star rating given in this review.
+          example: 5
+        useful:
+          type: integer
+          format: int32
+          description: "Useful votes count."
+          example: 3
+        funny:
+          type: integer
+          format: int32
+          description: "Funny votes count."
+          example: 0
+        cool:
+          type: integer
+          format: int32
+          description: "Cool votes count."
+          example: 1
+        text:
+          type: string
+          description: Full textual content of the review.
+          example: "Amazing service and great food!"
+        date:
+          type: string
+          format: date
+          description: Date when the review was created (ISO-8601 date, e.g. 2021-05-10).
+          example: "2021-05-10"
+      required:
+        - review_id
+        - user_id
+        - stars
+        - useful
+        - funny
+        - cool
+        - text
+        - date
+
+    BusinessReviewsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of review objects.
+          items:
+            $ref: "#/components/schemas/Review"
+      required:
+        - data
+
+    FavoriteBusiness:
+      type: object
+      properties:
+        favorited_at:
+          type: string
+          format: date-time
+          description: ISO timestamp when the user favorited this business.
+          example: "2024-10-01T12:34:56Z"
+        business_id:
+          type: string
+          description: Yelp business_id.
+          example: "abc123"
+        name:
+          type: string
+          description: Business name.
+          example: "Favorite Cafe"
+        city:
+          type: string
+          description: City where the business is located.
+          example: "Toronto"
+        state:
+          type: string
+          description: State or province code.
+          example: "ON"
+        stars:
+          type: number
+          format: float
+          description: Average star rating of the business.
+          example: 4.5
+        review_count:
+          type: integer
+          format: int32
+          description: Number of reviews.
+          example: 340
+        categories:
+          type: string
+          description: >
+            List of categories for the business as stored in the Business.categories column
+            (e.g., "Cafes, Coffee & Tea").
+          example: "Cafes, Coffee & Tea"
+      required:
+        - favorited_at
+        - business_id
+        - name
+        - city
+        - state
+        - stars
+        - review_count
+        - categories
+
+    UserFavoritesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: List of favorited businesses.
+          items:
+            $ref: "#/components/schemas/FavoriteBusiness"
+      required:
+        - data
+    CityBusinessContent:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City name.
+          example: "Las Vegas"
+        state:
+          type: string
+          description: State or province code.
+          example: "NV"
+        business_id:
+          type: string
+          description: Yelp business_id.
+          example: "biz123"
+        name:
+          type: string
+          description: Business name.
+          example: "Famous Steakhouse"
+        stars:
+          type: number
+          format: float
+          description: Yelp overall stars for the business.
+          example: 4.5
+        review_count:
+          type: integer
+          format: int32
+          description: Total number of reviews for the business.
+          example: 1500
+        rank_in_city:
+          type: integer
+          format: int32
+          description: Rank of the business within its city (1–5).
+          example: 1
+        content_type:
+          type: string
+          description: '"tip" or "review".'
+          enum:
+            - tip
+            - review
+          example: "review"
+        user_id:
+          type: string
+          description: ID of the user who wrote this tip or review.
+          example: "user789"
+        content_text:
+          type: string
+          description: Text content of the tip or review.
+          example: "Best steak I've had in years..."
+        content_date:
+          type: string
+          format: date
+          description: Date when this tip/review was written (ISO date).
+          example: "2022-08-01"
+        content_rank:
+          type: integer
+          format: int32
+          description: Rank of this content item for that business (1–3, by recency).
+          example: 1
+      required:
+        - city
+        - state
+        - business_id
+        - name
+        - stars
+        - review_count
+        - rank_in_city
+        - content_type
+        - user_id
+        - content_text
+        - content_date
+        - content_rank
+
+    TopCityBusinessesWithContentResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: >
+            Each row corresponds to either a tip or a review for one top-ranked business
+            in a top city.
+          items:
+            $ref: "#/components/schemas/CityBusinessContent"
+      required:
+        - data
+        
+    FavoriteCategoryStat:
+      type: object
+      properties:
+        category:
+          type: string
+          description: Name of the category (e.g., "Restaurants", "Cafes").
+          example: "Restaurants"
+        num_favorited_businesses:
+          type: integer
+          format: int32
+          description: Number of the user's favorited businesses that fall into this category.
+          example: 8
+        avg_category_stars:
+          type: number
+          format: float
+          description: Average Yelp star rating for the user's favorited businesses in this category.
+          example: 4.63
+      required:
+        - category
+        - num_favorited_businesses
+        - avg_category_stars
+
+    FavoriteCategoriesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: Per-category stats computed from the user's favorited businesses.
+          items:
+            $ref: "#/components/schemas/FavoriteCategoryStat"
+      required:
+        - data
+
