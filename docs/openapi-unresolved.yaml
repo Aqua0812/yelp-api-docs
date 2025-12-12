@@ -388,7 +388,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Internal server error"
-  /api/users/{authorizedUserId}/favorites:
+
     get:
       summary: Get All Favorited Businesses for a User
       description: >
