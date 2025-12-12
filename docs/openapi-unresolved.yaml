@@ -642,6 +642,160 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Internal server error"
+  /api/users/{authorizedUserId}/favorites:
+    get:
+      summary: Get All Favorited Businesses for a User
+      description: >
+        Returns all businesses that a given logged-in user has favorited, ordered by the time
+        they were favorited (most recent first). Used on the User Profile Page to display the
+        user's saved businesses.
+      operationId: getUserFavorites
+      tags:
+        - User
+      parameters:
+        - name: authorizedUserId
+          in: path
+          required: true
+          description: Internal app-level ID of the logged-in user (from AuthorizedUser / Clerk).
+          schema:
+            type: string
+            example: "user_2aBcDeFg"
+      responses:
+        "200":
+          description: List of favorited businesses for the specified user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserFavoritesResponse"
+        "400":
+          description: "Missing authorizedUserId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      summary: Add a Business to User Favorites
+      description: >
+        Adds the specified business to the given user's favorites. Used on the Business Detail Page
+        and Search / Explore pages when a logged-in user clicks the "Favorite" button.
+      operationId: addFavoriteBusinessForUser
+      tags:
+        - User
+      parameters:
+        - name: authorizedUserId
+          in: path
+          required: true
+          description: Internal app-level ID of the logged-in user (from Clerk).
+          schema:
+            type: string
+            example: "user_2aBcDeFg"
+      requestBody:
+        required: true
+        description: JSON body specifying which business to favorite.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                businessId:
+                  type: string
+                  description: Yelp business_id of the business to add to favorites.
+                  example: "Pns2l4eNsfO8kk83dixA6A"
+              required:
+                - businessId
+      responses:
+        "200":
+          description: Business successfully added to favorites (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+        "400":
+          description: Missing or invalid parameters in path or body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing businessId in request body."
+        "401":
+          description: Unauthorized – missing or invalid auth token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid Authorization header"
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/users/{authorizedUserId}/favorites/{businessId}:
+    delete:
+      summary: Remove a Business from User Favorites
+      description: >
+        Removes the specified business from the given user's favorites. Used when a logged-in user
+        un-favorites a business from the Business Detail Page or User Profile Page.
+      operationId: removeFavoriteBusinessForUser
+      tags:
+        - User
+      parameters:
+        - name: authorizedUserId
+          in: path
+          required: true
+          description: Internal app-level ID of the logged-in user (from Clerk).
+          schema:
+            type: string
+            example: "user_2aBcDeFg"
+        - name: businessId
+          in: path
+          required: true
+          description: Yelp business_id of the business to remove from favorites.
+          schema:
+            type: string
+            example: "Pns2l4eNsfO8kk83dixA6A"
+      responses:
+        "200":
+          description: Business successfully removed from favorites (idempotent).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              example:
+                success: true
+        "400":
+          description: Missing or invalid path parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized – missing or invalid auth token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid Authorization header"
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
 components:
   schemas:
     Business:
@@ -1220,5 +1374,16 @@ components:
             $ref: "#/components/schemas/Tip"
       required:
         - data
+    
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates whether the operation succeeded.
+          example: true
+      required:
+        - success
+
 
 
