@@ -84,28 +84,34 @@ paths:
                 error: "Internal server error"
   /api/home/most-reviewed:
     get:
-      summary: Get Top 100 Most Reviewed Businesses
+      summary: Get most reviewed businesses
       description: >
-        Returns the 100 businesses with the highest review_count across all cities,
-        for the Home Page “Top 100 Most Reviewed Businesses” section.
+        Returns up to 100 businesses ordered by review_count (descending). Includes one tip per business if available.
       operationId: getMostReviewedBusinesses
       tags:
         - Home
       parameters: []
       responses:
         "200":
-          description: Successful response with up to 100 most reviewed businesses
+          description: A list of most reviewed businesses
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TopBusinessesResponse"
+                $ref: "#/components/schemas/TopBusiness"
               example:
                 data:
-                  - business_id: "yyyy"
-                    name: "Another Business"
-                    city: "Las Vegas"
-                    stars: 4.0
-                    review_count: 2500
+                  - business_id: "xYz123"
+                    name: "Cafe Example"
+                    city: "Philadelphia"
+                    stars: 4.2
+                    review_count: 1534
+                    tip_text: "Try the cold brew."
+                  - business_id: "abc999"
+                    name: "Pizza Place"
+                    city: "New York"
+                    stars: 3.8
+                    review_count: 1490
+                    tip_text: null
         "500":
           description: Internal server error from the database or server
           content:
@@ -220,13 +226,41 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Internal server error"
+  /api/search/cities:
+    get:
+      summary: Get all cities
+      description: Returns the list of distinct city names from the CityList view, ordered alphabetically.
+      tags:
+        - Search
+      responses:
+        "200":
+          description: A list of city names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              examples:
+                example:
+                  value:
+                    - "Austin"
+                    - "Boston"
+                    - "Chicago"
+                    - "Philadelphia"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/search/top-attributes:
     get:
       summary: Get Top Attributes for Selected Categories
       description: >
-        Given one or more user-selected categories, returns the most representative attributes
-        (e.g., "WiFi", "OutdoorSeating") used by businesses in those categories. This powers the
-        dynamic attribute filter UI on the Search Page.
+        Returns the distinct JSONB attribute keys (attribute_name) found among businesses
+        that match any of the given categories. Used by the Search Page to build dynamic
+        attribute filters.
       operationId: getTopAttributesForCategories
       tags:
         - Search
@@ -235,17 +269,20 @@ paths:
           in: query
           required: true
           description: >
-            Comma-separated list of category names selected by the user
-            (e.g. "Restaurants,Bars,Nightlife").
+           One or more category names. Controller already parses into string[] (e.g.
+            ?categories=Restaurants&categories=Bars). Case-insensitive.
           schema:
-            type: string
+            type: array
+            items:
+              type: string
             example: "Restaurants,Bars,Nightlife"
 
         - name: minBusinessCount
           in: query
           required: false
           description: >
-            Minimum number of businesses that must have an attribute for it to be included.
+            Optional. If implemented, would filter out attributes appearing in fewer than
+            this many businesses. (Not used in the shown SQL.)
           schema:
             type: integer
             format: int32
@@ -256,7 +293,8 @@ paths:
         - name: limit
           in: query
           required: false
-          description: Maximum number of attributes to return (top-N ranked).
+          description: Optional. If implemented, would limit the number of attributes returned.
+            (Not used in the shown SQL; current query returns all distinct keys.)
           schema:
             type: integer
             format: int32
@@ -266,26 +304,19 @@ paths:
 
       responses:
         "200":
-          description: Successful response with attribute statistics
+          description: Attribute keys for the given categories
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TopAttributesResponse"
-              example:
-                data:
-                  - attribute_name: "WiFi"
-                    business_count_with_attr: 820
-                    coverage_ratio: 0.73
-                    rank_position: 1
-                  - attribute_name: "OutdoorSeating"
-                    business_count_with_attr: 540
-                    coverage_ratio: 0.48
-                    rank_position: 2
-                categories:
-                  - "Restaurants"
-                  - "Bars"
-                limit: 50
-                minBusinessCount: 10
+              examples:
+                example:
+                  value:
+                    attributes:
+                      - "AcceptsCreditCards"
+                      - "BikeParking"
+                      - "BusinessParking"
+                      - "GoodForKids"
 
         "400":
           description: "Missing required parameter: categories"
@@ -793,6 +824,40 @@ components:
       required:
         - category_name
         - category_count
+
+    TopBusiness:
+      type: object
+      required:
+        - business_id
+        - name
+        - city
+        - stars
+        - review_count
+      properties:
+        business_id:
+          type: string
+          description: Unique business identifier
+          example: "xYz123"
+        name:
+          type: string
+          example: "Cafe Example"
+        city:
+          type: string
+          example: "Philadelphia"
+        stars:
+          type: number
+          format: float
+          description: Average star rating
+          example: 4.2
+        review_count:
+          type: integer
+          description: Total number of reviews for the business
+          example: 1534
+        tip_text:
+          type: string
+          nullable: true
+          description: One tip text for the business (e.g., most recent). Null if no tip exists.
+          example: "Try the cold brew."
 
     TopBusinessesResponse:
       type: object
