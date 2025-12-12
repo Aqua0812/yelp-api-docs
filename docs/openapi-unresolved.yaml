@@ -389,56 +389,7 @@ paths:
               example:
                 error: "Internal server error"
 
-    get:
-      summary: Get All Favorited Businesses for a User
-      description: >
-        Returns all businesses that a given logged-in user has favorited, ordered by the time
-        they were favorited (most recent first). Used on the User Profile Page to display the
-        user's saved businesses.
-      operationId: getUserFavorites
-      tags:
-        - User
-      parameters:
-        - name: authorizedUserId
-          in: path
-          required: true
-          description: Internal app-level ID of the logged-in user (from AuthorizedUser table).
-          schema:
-            type: string
-            example: "123"
-      responses:
-        "200":
-          description: List of favorited businesses for the specified user
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserFavoritesResponse"
-              example:
-                data:
-                  - favorited_at: "2024-10-01T12:34:56Z"
-                    business_id: "abc123"
-                    name: "Favorite Cafe"
-                    city: "Toronto"
-                    state: "ON"
-                    stars: 4.5
-                    review_count: 340
-                    categories: "Cafes, Coffee & Tea"
-        "400":
-          description: "Missing authorizedUserId path parameter."
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "Missing authorizedUserId path parameter."
-        "500":
-          description: Internal server error from the database or server
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: "Internal server error"
+    
   /api/explore/top-businesses-with-content:
     get:
       summary: Get Top Businesses in Top Cities with Recent Tips & Reviews
