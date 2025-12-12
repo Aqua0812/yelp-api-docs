@@ -1126,3 +1126,99 @@ components:
       required:
         - data
 
+        BusinessProfile:
+      type: object
+      description: Full business profile used on the Business Detail Page.
+      properties:
+        business_id:
+          type: string
+          description: Yelp business_id (primary key).
+          example: "Pns2l4eNsfO8kk83dixA6A"
+        name:
+          type: string
+          example: "Abby Rappoport, LAC, CMQ"
+        address:
+          type: string
+          example: "1616 Chapala St, Ste 2"
+        city:
+          type: string
+          example: "Santa Barbara"
+        state:
+          type: string
+          example: "CA"
+        postal_code:
+          type: string
+          example: "93101"
+        stars:
+          type: number
+          format: float
+          example: 5.0
+        review_count:
+          type: integer
+          format: int32
+          example: 7
+        is_open:
+          type: boolean
+          description: Whether the business is currently open.
+          example: false
+        attributes:
+          type: object
+          nullable: true
+          description: Parsed attributes JSON (e.g. {"ByAppointmentOnly":"True"}).
+        categories:
+          type: string
+          description: Comma-separated list of categories.
+          example: "Doctors, Traditional Chinese Medicine, Naturopathic/Holistic"
+        hours:
+          type: object
+          nullable: true
+          description: Opening hours JSON object if available.
+      required:
+        - business_id
+        - name
+        - address
+        - city
+        - state
+        - postal_code
+        - stars
+        - review_count
+        - is_open
+
+    BusinessProfileResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/BusinessProfile"
+      required:
+        - data
+
+    Tip:
+      type: object
+      description: Short user tip for a business.
+      properties:
+        user_id:
+          type: string
+          example: "user123"
+        text:
+          type: string
+          example: "Great place for acupuncture, very relaxing."
+        date:
+          type: string
+          format: date
+          example: "2015-03-16"
+      required:
+        - user_id
+        - text
+        - date
+
+    BusinessTipsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tip"
+      required:
+        - data
+
+
