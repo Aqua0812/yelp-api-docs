@@ -536,7 +536,112 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "Internal server error"
-
+  /api/businesses/{businessId}/profile:
+    get:
+      summary: Get Business Profile
+      description: >
+        Returns the full business profile for a given business, including address, location,
+        stars, review_count, categories, attributes, and hours. Used on the Business Detail Page
+        to populate the main business information panel.
+      operationId: getBusinessProfile
+      tags:
+        - Business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          description: Yelp business_id of the business whose profile is requested.
+          schema:
+            type: string
+            example: "Pns2l4eNsfO8kk83dixA6A"
+      responses:
+        "200":
+          description: Business profile for the specified business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessProfileResponse"
+              example:
+                data:
+                  business_id: "Pns2l4eNsfO8kk83dixA6A"
+                  name: "Abby Rappoport, LAC, CMQ"
+                  address: "1616 Chapala St, Ste 2"
+                  city: "Santa Barbara"
+                  state: "CA"
+                  postal_code: "93101"
+                  stars: 5.0
+                  review_count: 7
+                  is_open: 0
+                  attributes:
+                    ByAppointmentOnly: "True"
+                  categories: "Doctors, Traditional Chinese Medicine, Naturopathic/Holistic, Acupuncture, Health & Medical, Nutritionists"
+                  hours: null
+        "400":
+          description: "Missing or invalid businessId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid businessId path parameter."
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
+  /api/businesses/{businessId}/tips:
+    get:
+      summary: Get Latest Tips for a Business
+      description: >
+        Returns the latest short tips for a specified business, ordered by date descending.
+        Used on the Business Detail Page to complement full reviews with short user tips.
+      operationId: getLatestTipsForBusiness
+      tags:
+        - Business
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          description: Yelp business_id of the business whose tips are requested.
+          schema:
+            type: string
+            example: "Pns2l4eNsfO8kk83dixA6A"
+      responses:
+        "200":
+          description: Latest tips for the specified business
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessTipsResponse"
+              example:
+                data:
+                  - tip_id: "tip123"
+                    user_id: "user001"
+                    text: "Great place for a quick lunch."
+                    date: "2019-03-10"
+                  - tip_id: "tip456"
+                    user_id: "user002"
+                    text: "Parking can be tricky on weekends."
+                    date: "2018-11-02"
+        "400":
+          description: "Missing or invalid businessId path parameter."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Missing or invalid businessId path parameter."
+        "500":
+          description: Internal server error from the database or server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "Internal server error"
 components:
   schemas:
     Business:
